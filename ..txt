@@ -1,0 +1,98 @@
+Send(string srcPath, string destPath)  //sends a single file
+
+Recieve(string destPath) //recieves a single file
+This is the Send method:
+
+public void Send(string srcPath, string destPath)
+{
+    using (fs = new FileStream(srcPath, FileMode.Open, FileAccess.Read))
+    {
+        try
+        {
+            fileSize = fs.Length;
+            while (sum < fileSize)
+            {
+                if (fileSize - sum < packetSize)
+                {
+                    count = fs.Read(data, 0, (int)(fileSize - sum));
+                    network.Write(data, 0, (int)(fileSize - sum));
+                }
+                else
+                {
+                    count = fs.Read(data, 0, data.Length);
+                    network.Write(data, 0, data.Length);
+                }
+                fs.Seek(sum, SeekOrigin.Begin);
+                sum += count;
+            }
+            network.Flush();
+        }
+        finally
+        {
+            fs.Dispose();
+        }
+    }
+}
+and this's the Recieve Method :
+
+    public void Recieve(string destPath)
+    {
+        using (fs = new FileStream(destPath, FileMode.Create, FileAccess.Write))
+        {
+            try
+            {
+                while (sum < fileSize)
+                {
+                    if (fileSize - sum < packetSize)
+                    {
+                        count = network.Read(data, 0, (int)(fileSize - sum));
+                        fs.Write(data, 0, (int)(fileSize - sum));
+                    }
+                    else
+                    {
+                        count = network.Read(data, 0, data.Length);
+                        fs.Write(data, 0, data.Length);
+                    }
+                    fs.Seek(sum, SeekOrigin.Begin);
+                    sum += count;
+                }
+            }
+            finally
+            {
+                fs.Dispose();
+            }
+        }
+    }
+This is a common variables :
+
+    const int packetSize = 1024 * 8;    //Packet Size.
+    long sum;                           //Sum of sent data.
+    long fileSize;                      //File Size.
+    int count = 0;                      //data counter.
+    static byte[] data = null;          //data buffer.
+
+    NetworkStream network; 
+    FileStream fs;
+I also got:
+
+bool IsFolder(string path) //that returns if the path is a folder or a file
+
+
+
+
+
+public void SendFolder(string srcPath, string destPath)
+    {
+        string dirName = Path.Combine(destPath, Path.GetFileName(srcPath));
+        CreateDirectory(dirName);  // consider that this method creates a directory at the server
+        string[] fileEntries = Directory.GetFiles(srcPath);
+        string[] subDirEntries = Directory.GetDirectories(srcPath);
+        foreach (string filePath in fileEntries)
+        {
+            Send(srcPath, dirName);
+        }
+        foreach (string dirPath in subDirEntries)
+        {
+            SendFolder(dirPath, dirName);
+        }
+    }
